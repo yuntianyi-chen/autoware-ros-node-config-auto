@@ -38,13 +38,8 @@ class Parameter:
     def set_param_description(self, param_description):
         self.param_description = param_description
 
-    # def set_type(self, type):
-    #     self.type = str(type)
-
     def set_python_value_type(self, param_value):
         self.python_value = eval(self.proprocess_value(param_value))
-        # if not self.cpp_type:
-        # self.set_cpp_type(type(self.python_value).__name__)
         self.python_type = type(self.python_value).__name__
 
     def proprocess_value(self, param_value):
@@ -60,7 +55,7 @@ class Parameter:
         print(f"    cpp type: {self.cpp_type}")
         print(f"    python type: {self.python_type}")
         print(f"    param value: {self.param_value}")
-        # print(f"    Description: {self.param_description}")
+        print(f"    Description: {self.param_description}")
 
     def __str__(self):
         return f"{self.param_name}: {self.param_type} {self.param_value} ({self.param_description})"
@@ -82,8 +77,11 @@ class Parameter:
         elif cpp_type == "int" or cpp_type == "int32_t" or cpp_type == "int64_t":
             self.param_type = "int64_t"
             self.schema_type = "integer"
-        elif cpp_type == "double" or cpp_type == "float":
+        elif cpp_type == "double":
             self.param_type = "double"
+            self.schema_type = "number"
+        elif cpp_type == "float":
+            self.param_type = "float"
             self.schema_type = "number"
         elif cpp_type == "bool":
             self.param_type = "bool"
