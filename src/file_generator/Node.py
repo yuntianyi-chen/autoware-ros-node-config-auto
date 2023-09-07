@@ -1,17 +1,23 @@
+from xml.etree.ElementTree import ElementTree
 from src.parameter.Parameter import Parameter
 
 
 class Node:
     node_name: str
     cpp_file: str
+    launch_file: str
     cpp_file_name: str
+    package_name: str
     package_path: str
     parameter_list: list[Parameter]
+    launch_xml_tree: ElementTree
 
-    def __init__(self, node_name, package_path):
+    def __init__(self, node_name, exec_name, package_path):
         self.node_name = node_name
+        self.exec_name = exec_name
         self.package_path = package_path
         self.parameter_list = []
+        self.package_name = package_path.split("/")[-2]
 
     def update_cpp_info(self, cpp_file):
         self.cpp_file = cpp_file
@@ -39,3 +45,9 @@ class Node:
         for parameter in self.parameter_list:
             if parameter.param_name == readme_param_name and not parameter.cpp_type:
                 parameter.set_cpp_type(readme_param_type)
+
+    def update_launch_file_info(self, launch_file):
+        self.launch_file = launch_file
+
+    def update_launch_xml_tree(self, launch_xml_tree):
+        self.launch_xml_tree = launch_xml_tree

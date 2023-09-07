@@ -2,6 +2,7 @@ import re
 from src.file_generator.Node import Node
 from src.parameter.Parameter import Parameter
 from src.refactoring_related_files.RelatedFiles import RelatedFiles
+import xml.etree.ElementTree as ET
 
 
 class FileParser:
@@ -21,21 +22,22 @@ class FileParser:
         self.parse_cmake_file(self.related_files.get_cmake_file_list())
         self.parse_cpp_file(self.related_files.get_candidate_cpp_file_list())
         self.parse_readme_file(self.related_files.get_readme_file_list())
-        # self.parse_param_file(self.related_files.get_param_file_list()
-        # self.parse_launch_file(self.related_files.get_launch_file_list())
+        # self.parse_param_file(self.related_files.get_param_file_list())
+        self.parse_launch_file(self.related_files.get_launch_file_list())
 
     def parse_cmake_file(self, cmake_file_list):
         for cmake_file in cmake_file_list:
             with open(cmake_file, "r") as f:
                 text = f.read()
-                pattern = r"rclcpp_components_register_node\(\s*(\w+)\s*PLUGIN"
+                pattern = r"rclcpp_components_register_node\(\s*(\w+)\s*PLUGIN.*\n?.*EXECUTABLE\s*(\w+)"
                 match_list = re.findall(pattern, text)
-                if match_list:
-                    for match in match_list:
-                        node_name = match
-                        package_path = cmake_file.replace("CMakeLists.txt", "")
-                        node = Node(node_name, package_path)
-                        self.node_list.append(node)
+                # if match_list:
+                for match in match_list:
+                    node_name = match[0]
+                    exec_name = match[1]
+                    package_path = cmake_file.replace("CMakeLists.txt", "")
+                    node = Node(node_name, exec_name, package_path)
+                    self.node_list.append(node)
                 else:
                     print(f"\nNo Separate Nodes in this package")
 
@@ -109,8 +111,34 @@ class FileParser:
                         node.update_parameter_type(param_data["name"], param_data["type"])
                         break
 
-    def parse_param_file(self):
-        pass
+    # def parse_param_file(self, param_file_list):
+    # for param_file in param_file_list:
+        #     with open(param_file, "r") as f:
+        #         text = f.read()
+        #         pattern = r"(\w+): (.*)"
+        #         match_list = re.findall(pattern, text)
+        #         for match in match_list:
+        #             param_name = match[0]
+        #             param_value = match[1]
+        #             for node in self.node_list:
+        #                 if node.has_parameter(param_name):
+        #                     node.update_parameter_value(param_name, param_value)
+        #                     break
 
     def parse_launch_file(self, launch_file_list):
-        pass
+        # parse launch.xml file
+        for launch_file in launch_file_list:
+            print("\n"+launch_file)
+            # Load and parse the XML file
+            tree = ET.parse(launch_file)
+            root = tree.getroot()
+            for element in root.iter('node'):
+                found = False
+                for node in self.node_list:
+                    if element.attrib.get('exec') == node.exec_name:
+                        node.update_launch_file_info(launch_file)
+                        node.update_launch_xml_tree(tree)
+                        found = True
+                        break
+                if found:
+                    break
