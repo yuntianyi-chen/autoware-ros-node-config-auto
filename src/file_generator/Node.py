@@ -4,6 +4,8 @@ from src.parameter.Parameter import Parameter
 
 class Node:
     node_name: str
+    node_or_package_name: str
+    plugin_name: str
     cpp_file: str
     launch_file: str
     cpp_file_name: str
@@ -12,12 +14,23 @@ class Node:
     parameter_list: list[Parameter]
     launch_xml_tree: ElementTree
 
-    def __init__(self, node_name, exec_name, package_path):
-        self.node_name = node_name
+    def __init__(self, node_or_package_name, plugin_name, exec_name, package_path):
+        self.node_or_package_name = node_or_package_name
+        self.plugin_name = plugin_name
         self.exec_name = exec_name
         self.package_path = package_path
         self.parameter_list = []
         self.package_name = package_path.split("/")[-2]
+        self.node_name = self.parse_node_name()
+
+    def parse_node_name(self):
+        if self.node_or_package_name in self.exec_name:
+            candidate_node_name = self.node_or_package_name
+        elif self.exec_name in self.node_or_package_name:
+            candidate_node_name = self.exec_name
+        else:
+            candidate_node_name = "_".join(self.exec_name.split("_")[:-1])
+        return candidate_node_name
 
     def update_cpp_info(self, cpp_file):
         self.cpp_file = cpp_file

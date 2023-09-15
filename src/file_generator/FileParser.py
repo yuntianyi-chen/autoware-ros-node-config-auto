@@ -29,26 +29,35 @@ class FileParser:
         for cmake_file in cmake_file_list:
             with open(cmake_file, "r") as f:
                 text = f.read()
-                pattern = r"rclcpp_components_register_node\(\s*(\w+)\s*PLUGIN.*\n?.*EXECUTABLE\s*(\w+)"
+                pattern = r"rclcpp_components_register_node\(\s*(\w+)\s*PLUGIN\s*\"(.+)\"\s*.*EXECUTABLE\s*(\w+)"
                 match_list = re.findall(pattern, text)
-                # if match_list:
-                for match in match_list:
-                    node_name = match[0]
-                    exec_name = match[1]
-                    package_path = cmake_file.replace("CMakeLists.txt", "")
-                    node = Node(node_name, exec_name, package_path)
-                    self.node_list.append(node)
+                if match_list:
+                    for match in match_list:
+                        node_or_package_name = match[0]
+                        plugin_name = match[1]
+                        exec_name = match[2]
+                        package_path = cmake_file.replace("CMakeLists.txt", "")
+                        node = Node(node_or_package_name, plugin_name, exec_name, package_path)
+                        self.node_list.append(node)
                 else:
                     print(f"\nNo Separate Nodes in this package")
 
+    def find_node_register(self, plugin_name, text):
+        pattern = r"RCLCPP_COMPONENTS_REGISTER_NODE\(\s*" + plugin_name + "\s*\)"
+        match = re.search(pattern, text)
+        if match:
+            return True
+        else:
+            return False
+
     def parse_cpp_file(self, cpp_file_list):
-        for node in self.node_list:
-            for cpp_file in cpp_file_list:
-                if node.node_name + ".cpp" == cpp_file.split("/")[-1]:
-                    node.update_cpp_info(cpp_file)
-                    with open(cpp_file, "r") as f:
-                        text = f.read()
-                        pattern = r"((this->)?declare_parameter(<(.+)>)?\((\s*\"(.+)\"\s*(,\s*(.+)\s*)?)\);)"
+        for cpp_file in cpp_file_list:
+            for node in self.node_list:
+                with open(cpp_file, "r") as f:
+                    text = f.read()
+                    if self.find_node_register(node.plugin_name, text):
+                        node.update_cpp_info(cpp_file)
+                        pattern = r"((this->)?declare_parameter(<(.+)>)?\((\s*\"(.+?)\"\s*(,\s*(.+)\s*)?)\);)"
                         match_list = re.findall(pattern, text)
                         for match in match_list:
                             cpp_type = match[3]
@@ -60,7 +69,7 @@ class FileParser:
                             parameter.set_param_value(param_value)
 
                             node.add_parameter(parameter)
-                    break
+                        break
 
     def header_filter(self, header):
         header = [h.lower() for h in header]
@@ -76,32 +85,30 @@ class FileParser:
             param_data_list = []
             with open(readme_file, "r") as f:
                 lines = f.readlines()
-                until_parameters = False
                 pattern = r"\|.*\|\s*\n\s*"
                 line_count = 0
                 for line in lines:
                     param_data = {}
-                    if until_parameters:
-                        match = re.search(pattern, line)
-                        if match:
-                            if line_count == 0:
-                                header = [t.strip() for t in line.split('|')[1:-1]]
-                                new_header = self.header_filter(header)
-                            elif line_count > 1:
-                                values = [t.strip() for t in line.split('|')[1:-1]]
-                                for col, value in zip(new_header, values):
-                                    filtered_value = value.replace("`", "")
-                                    param_data[col] = filtered_value
-                                if "default" not in param_data:
-                                    param_data["default"] = ""
-                                if "type" not in param_data:
-                                    param_data["type"] = ""
-                                if "description" not in param_data:
-                                    param_data["description"] = ""
-                                param_data_list.append(param_data)
-                            line_count += 1
-                    elif "## Parameters" in line:
-                        until_parameters = True
+                    match = re.search(pattern, line)
+                    if match:
+                        if line_count == 0:
+                            header = [t.strip() for t in line.split('|')[1:-1]]
+                            new_header = self.header_filter(header)
+                        elif line_count > 1:
+                            values = [t.strip() for t in line.split('|')[1:-1]]
+                            for col, value in zip(new_header, values):
+                                filtered_value = value.replace("`", "")
+                                param_data[col] = filtered_value
+                            if "default" not in param_data:
+                                param_data["default"] = ""
+                            if "type" not in param_data:
+                                param_data["type"] = ""
+                            if "description" not in param_data:
+                                param_data["description"] = ""
+                            param_data_list.append(param_data)
+                        line_count += 1
+                    else:
+                        line_count = 0
 
             for param_data in param_data_list:
                 for node in self.node_list:
@@ -109,26 +116,31 @@ class FileParser:
                         node.set_parameter_description(param_data["name"], param_data["description"])
                         node.update_parameter_value(param_data["name"], param_data["default"])
                         node.update_parameter_type(param_data["name"], param_data["type"])
-                        break
 
     # def parse_param_file(self, param_file_list):
-    # for param_file in param_file_list:
-        #     with open(param_file, "r") as f:
-        #         text = f.read()
-        #         pattern = r"(\w+): (.*)"
-        #         match_list = re.findall(pattern, text)
-        #         for match in match_list:
-        #             param_name = match[0]
-        #             param_value = match[1]
-        #             for node in self.node_list:
-        #                 if node.has_parameter(param_name):
-        #                     node.update_parameter_value(param_name, param_value)
-        #                     break
+    #     # parse the param.yaml file as the example shows above
+    #     for param_file in param_file_list:
+    #         with open(param_file, "r") as f:
+    #             lines = f.readlines()
+    #             param_data_list =[]
+    #             prefix = ""
+    #             for line in lines[2:]:
+    #                 if ":" in line:
+    #                     param_name = line.split(":")[0].strip()
+    #                     param_value = line.split(":")[1].strip()
+    #                     if not param_value:
+    #                         if prefix:
+    #                             prefix += "." + param_name
+    #                         else:
+    #                             prefix = param_name
+    #                     for node in self.node_list:
+    #                         if node.has_parameter(param_name):
+    #                             node.update_parameter_value(param_name, param_value)
+    #                             break
 
     def parse_launch_file(self, launch_file_list):
         # parse launch.xml file
         for launch_file in launch_file_list:
-            print("\n"+launch_file)
             # Load and parse the XML file
             tree = ET.parse(launch_file)
             root = tree.getroot()

@@ -84,7 +84,7 @@ class FileGenerator:
             for parameter in node.parameter_list:
                 text += (f"        \"{parameter.param_name}\": {{\n"
                          f"          \"type\": \"{parameter.schema_type}\",\n"
-                         f"          \"default\": \"{parameter.param_value}\",\n"
+                         f"          \"default\": \"{parameter.schema_value}\",\n"
                          f"          \"description\": \"{parameter.param_description}\"\n        }},\n")
                 if parameter == node.parameter_list[-1]:
                     text = text[:-2] + "\n"
