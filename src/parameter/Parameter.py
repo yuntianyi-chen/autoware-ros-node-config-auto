@@ -67,7 +67,7 @@ class Parameter:
     def set_param_schema_type_value(self, python_type, cpp_type):
         self.schema_value = self.param_value
 
-        if python_type:
+        if python_type and python_type != "float":
             if python_type == "str":
                 self.param_type = "std::string"
                 self.schema_type = "string"
@@ -76,9 +76,6 @@ class Parameter:
             elif python_type == "int":
                 self.param_type = "int64_t"
                 self.schema_type = "integer"
-            elif python_type == "float":
-                self.param_type = "float"
-                self.schema_type = "number"
             elif python_type == "bool":
                 self.param_type = "bool"
                 self.schema_type = "boolean"

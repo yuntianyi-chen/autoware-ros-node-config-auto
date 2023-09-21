@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 
 # from xml.etree.ElementTree import ElementTree
 
-from src.config import GENERATE_MODE, GENERATE_PATH
+from src.config import GENERATE_MODE, GENERATE_PATH, NODE_PATH
 from src.file_generator.Node import Node
 from src.refactoring_related_files.RelatedFiles import RelatedFiles
 
@@ -26,7 +26,7 @@ class FileGenerator:
 
     def write_to_file(self, file_path, text):
         if GENERATE_MODE == "new":
-            new_file_path = GENERATE_PATH + file_path.split("autoware.universe/")[-1]
+            new_file_path = GENERATE_PATH + "/".join(NODE_PATH.split("/")[-2:]) + file_path.split(NODE_PATH)[-1]
         elif GENERATE_MODE == "overwrite":
             new_file_path = file_path
         else:
@@ -53,7 +53,7 @@ class FileGenerator:
         for node in self.node_list:
             with open(node.cpp_file, "r") as f:
                 text = f.read()
-                pattern = r"((this->)?declare_parameter(<(.+)>)?\((\s*\"(.+)\"\s*(,\s*(.+)\s*)?)\);)"
+                pattern = r"((this->)?declare_parameter(<(.+)>)?\((\s*\"(.+?)\"\s*(,\s*(.+)\s*)?)\);)"
                 match_list = re.findall(pattern, text)
                 for match in match_list:
                     statement = match[0]
@@ -134,7 +134,7 @@ class FileGenerator:
             new_param.attrib["from"] = f"$(var {new_arg_name})"
 
             launch_file_path = node.package_path + "launch/" + node.node_name + ".launch.xml"
-            new_file_path = GENERATE_PATH + launch_file_path.split("autoware.universe/")[-1]
+            new_file_path = GENERATE_PATH + "/".join(NODE_PATH.split("/")[-2:]) + launch_file_path.split(NODE_PATH)[-1]
             os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
             ElementTree.indent(node.launch_xml_tree, space="\t", level=0)
             node.launch_xml_tree.write(new_file_path)
